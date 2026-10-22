@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Videos</title>
+  <style>
+    :root {
+      --fondo: #ffffff;
+      --texto: #1a1a1a;
+      --texto-suave: #666666;
+      --borde: #dddddd;
+      --acento: #1a1a1a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fondo: #151515;
+        --texto: #f2f2f2;
+        --texto-suave: #a0a0a0;
+        --borde: #333333;
+        --acento: #f2f2f2;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--fondo);
+      color: var(--texto);
+      line-height: 1.5;
+    }
+    header, main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem; }
+    h1 { margin: 0 0 .25rem; font-size: 1.75rem; }
+    header p { margin: 0; color: var(--texto-suave); }
+
+    .grilla {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+    .tarjeta {
+      border: 1px solid var(--borde);
+      border-radius: 8px;
+      overflow: hidden;
+      background: none;
+      color: inherit;
+      text-align: left;
+      padding: 0;
+      cursor: pointer;
+      font: inherit;
+    }
+    .tarjeta:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+    .miniatura {
+      aspect-ratio: 16 / 9;
+      background: var(--borde);
+      display: block;
+      width: 100%;
+      object-fit: cover;
+    }
+    .info { padding: .75rem; }
+    .info h2 { margin: 0 0 .25rem; font-size: 1rem; }
+    .info p { margin: 0; font-size: .9rem; color: var(--texto-suave); }
+
+    dialog {
+      width: min(900px, 94vw);
+      border: none;
+      border-radius: 8px;
+      padding: 0;
+      background: var(--fondo);
+      color: var(--texto);
+    }
+    dialog::backdrop { background: rgba(0, 0, 0, .75); }
+    .reproductor { aspect-ratio: 16 / 9; background: #000; }
+    .reproductor video, .reproductor iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .dialogo-pie { display: flex; justify-content: space-between; align-items: start; gap: 1rem; padding: .75rem 1rem; }
+    .dialogo-pie h2 { margin: 0; font-size: 1.1rem; }
+    .dialogo-pie p { margin: .25rem 0 0; color: var(--texto-suave); font-size: .9rem; }
+    .cerrar {
+      border: 1px solid var(--borde);
+      background: none;
+      color: inherit;
+      border-radius: 6px;
+      padding: .4rem .8rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    .vacio { color: var(--texto-suave); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Videos</h1>
+    <p>Elegí un video para verlo.</p>
+  </header>
+
+  <main>
+    <div class="grilla" id="grilla"></div>
+  </main>
+
+  <dialog id="dialogo" aria-labelledby="dialogo-titulo">
+    <div class="reproductor" id="reproductor"></div>
+    <div class="dialogo-pie">
+      <div>
+        <h2 id="dialogo-titulo"></h2>
+        <p id="dialogo-descripcion"></p>
+      </div>
+      <button class="cerrar" id="cerrar" type="button">Cerrar</button>
+    </div>
+  </dialog>
+
+  <script>
+    /* ------------------------------------------------------------
+       LISTA DE VIDEOS
+       Para agregar un video, copiá uno de los bloques y cambiá los datos.
+
+       tipo: "archivo"  -> un .mp4 que subís al repo (carpeta /videos)
+             "youtube"  -> un video de YouTube (solo hace falta el ID)
+
+       Ejemplos:
+         { tipo: "archivo", titulo: "...", descripcion: "...",
+           src: "videos/mi-video.mp4", miniatura: "miniaturas/mi-video.jpg" }
+
+         { tipo: "youtube", titulo: "...", descripcion: "...",
+           id: "dQw4w9WgXcQ" }
+       La miniatura es opcional.
+    ------------------------------------------------------------ */
+    const VIDEOS = [
+      {
+        tipo: "archivo",
+        titulo: "Video de ejemplo 1",
+        descripcion: "Reemplazá este bloque por tu primer video.",
+        src: "videos/ejemplo-1.mp4",
+        miniatura: ""
+      },
+      {
+        tipo: "youtube",
+        titulo: "Video de ejemplo 2",
+        descripcion: "Reemplazá este bloque por un video de YouTube.",
+        id: "VIDEO_ID",
+        miniatura: ""
+      }
+    ];
+
+    const grilla = document.getElementById("grilla");
+    const dialogo = document.getElementById("dialogo");
+    const reproductor = document.getElementById("reproductor");
+    const tituloDialogo = document.getElementById("dialogo-titulo");
+    const descDialogo = document.getElementById("dialogo-descripcion");
+
+    function miniaturaDe(v) {
+      if (v.miniatura) return v.miniatura;
+      if (v.tipo === "youtube") return "https://i.ytimg.com/vi/" + v.id + "/hqdefault.jpg";
+      return "";
+    }
+
+    function crearTarjeta(v, i) {
+      const boton = document.createElement("button");
+      boton.type = "button";
+      boton.className = "tarjeta";
+      boton.dataset.indice = i;
+
+      const mini = miniaturaDe(v);
+      if (mini) {
+        const img = document.createElement("img");
+        img.className = "miniatura";
+        img.src = mini;
+        img.alt = "";
+        img.loading = "lazy";
+        boton.appendChild(img);
+      } else {
+        const hueco = document.createElement("span");
+        hueco.className = "miniatura";
+        boton.appendChild(hueco);
+      }
+
+      const info = document.createElement("div");
+      info.className = "info";
+      const h2 = document.createElement("h2");
+      h2.textContent = v.titulo;
+      const p = document.createElement("p");
+      p.textContent = v.descripcion || "";
+      info.append(h2, p);
+      boton.appendChild(info);
+
+      boton.addEventListener("click", () => abrir(v));
+      return boton;
+    }
+
+    function abrir(v) {
+      reproductor.innerHTML = "";
+      if (v.tipo === "youtube") {
+        const iframe = document.createElement("iframe");
+        iframe.src = "https://www.youtube-nocookie.com/embed/" + v.id + "?autoplay=1";
+        iframe.title = v.titulo;
+        iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+        iframe.allowFullscreen = true;
+        reproductor.appendChild(iframe);
+      } else {
+        const video = document.createElement("video");
+        video.src = v.src;
+        video.controls = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        reproductor.appendChild(video);
+      }
+      tituloDialogo.textContent = v.titulo;
+      descDialogo.textContent = v.descripcion || "";
+      dialogo.showModal();
+    }
+
+    function cerrar() {
+      dialogo.close();
+    }
+
+    dialogo.addEventListener("close", () => { reproductor.innerHTML = ""; });
+    document.getElementById("cerrar").addEventListener("click", cerrar);
+    dialogo.addEventListener("click", (e) => { if (e.target === dialogo) cerrar(); });
+
+    if (VIDEOS.length === 0) {
+      const vacio = document.createElement("p");
+      vacio.className = "vacio";
+      vacio.textContent = "Todavía no hay videos. Agregalos en la lista VIDEOS de index.html.";
+      grilla.replaceWith(vacio);
+    } else {
+      VIDEOS.forEach((v, i) => grilla.appendChild(crearTarjeta(v, i)));
+    }
+  </script>
+</body>
+</html>
